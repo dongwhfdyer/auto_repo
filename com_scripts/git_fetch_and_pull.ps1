@@ -1,3 +1,7 @@
+# Ensure we are in the repo directory
+$repo = "C:\User\xiajiakun\Documents\code\auto_repo"
+if (-not (Test-Path $repo)) { throw "Repo path not found: $repo" }
+Set-Location $repo
 
 git fetch origin
 
