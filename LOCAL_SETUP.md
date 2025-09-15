@@ -1,3 +1,4 @@
+==> /tmp/local_setup_head.md <==
 # Local setup performed on this machine
 
 This document records exactly what was executed in `/Users/kuhn/Documents/code/auto_repo`, plus why.
@@ -87,17 +88,55 @@ git commit -m "test auto-push"  # this triggers the hook
 
 ## Reverting or disabling the auto-push
 
-- Temporarily skip hook for one commit:
+==> /tmp/local_setup_troubleshoot.md <==
+
+## Troubleshooting auto-push hook
+
+- Verify hooks path is default:
 
 ```bash
-HUSKY=0 SKIP_GIT_HOOKS=1 git commit -m "commit without auto-push"
+git config --get core.hooksPath || echo ".git/hooks (default)"
 ```
 
-- Permanently disable by removing execute permission or the file:
+- Verify hook exists and is executable:
 
 ```bash
-chmod -x .git/hooks/post-commit
-# or
-rm -f .git/hooks/post-commit
+ls -l .git/hooks/post-commit
+```
+
+- Inspect hook contents:
+
+```bash
+sed -n '1,120p' .git/hooks/post-commit
+```
+
+- Trigger an empty commit to test and compare SHAs:
+
+```bash
+git commit --allow-empty -m "test: trigger auto-push"
+echo "local:" && git rev-parse HEAD
+echo "remote:" && git ls-remote origin -h refs/heads/main | awk '{print $1}'
+```
+
+- If missing, recreate the hook:
+
+```bash
+mkdir -p .git/hooks
+cat > .git/hooks/post-commit <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if git remote get-url origin >/dev/null 2>&1; then
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  if ! git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+    git push -u origin "$current_branch"
+  else
+    git push
+  fi
+else
+  echo "[post-commit] No 'origin' remote configured. Skipping auto-push."
+fi
+SH
+chmod +x .git/hooks/post-commit
 ```
 
