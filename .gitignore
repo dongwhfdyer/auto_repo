@@ -1,0 +1,134 @@
+# ---- OS / Editors ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.history/
+*.code-workspace
+
+# ---- Python bytecode / caches ----
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+.coverage*
+htmlcov/
+
+# ---- Virtual environments / tools ----
+.venv/
+venv/
+env/
+.python-version
+pip-wheel-metadata/
+.tox/
+.nox/
+
+# ---- Build / packaging ----
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+
+# ---- Notebooks ----
+.ipynb_checkpoints/
+
+# ---- Deep Learning artifacts (large) ----
+# model weights / checkpoints
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.tflite
+*.pb
+*.h5
+*.jit
+
+# numpy / pickle artifacts
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.joblib
+
+# experiment outputs
+runs/
+wandb/
+mlruns/
+lightning_logs/
+tensorboard/
+**/events.out.tfevents*
+
+# logs and outputs
+logs/
+log/
+output/
+outputs/
+results/
+artifacts/
+checkpoints/
+ckpts/
+
+# datasets and cache (keep code only)
+data/
+datasets/
+.cache/
+cache/
+
+# Large files by extension (archives, media)
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.zst
+*.xz
+*.gz
+*.bz2
+
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.mp3
+*.wav
+*.flac
+
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.tiff
+*.gif
+*.webp
+*.svg
+
+# Common tabular/binary data (can be large). Place under data/ if needed.
+# Uncomment to ignore globally:
+# *.csv
+# *.tsv
+# *.parquet
+# *.feather
+# *.xls
+# *.xlsx
+
+# ---- Credentials / env ----
+.env
+.env.*
+*.env
+*.secret
+*.secrets
+
+# ---- Misc ----
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+

@@ -1,5 +1,7 @@
-# Optional: set working repo path
-# $repo = "C:\User\xiajiakun\Documents\code\auto_repo"
+# Set working repo path and change into it (script may run from elsewhere)
+$repo = "C:\User\xiajiakun\Documents\code\auto_repo"
+if (-not (Test-Path $repo)) { throw "Repo path not found: $repo" }
+Set-Location $repo
 
 while ($true) {
   # If using $repo: git -C $repo fetch origin
