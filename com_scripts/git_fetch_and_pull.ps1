@@ -1,4 +1,8 @@
-# In the repo directory (or add: git -C "C:\path\to\repo" ...)
+# Ensure we are in the repo directory
+$repo = "C:\User\xiajiakun\Documents\code\auto_repo"
+if (-not (Test-Path $repo)) { throw "Repo path not found: $repo" }
+Set-Location $repo
+
 git fetch origin
 
 $diffCount = [int](git rev-list HEAD...origin/main --count)
