@@ -1,3 +1,5 @@
+# For Linux servers, see OTHER_SERVER_SETUP.md. For Windows, use this REMOTE_SETUP.md.
+
 # Auto-pull setup on the other server
 
 This server (developer box) auto-pushes to GitHub after each commit. The other server should keep `/data1/EAT_projs/auto_repo` up to date by pulling from GitHub. Below are two options.

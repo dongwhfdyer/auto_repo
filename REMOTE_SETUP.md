@@ -1,94 +1,99 @@
-### Remote auto-pull setup
+# Windows remote auto-pull setup
 
-These commands are meant to be run on the OTHER server. Replace `YOUR_USER` and `YOUR_HOST` if you copy scp/ssh examples.
+Target working copy: `C:\User\xiajiakun\Documents\code\auto_repo`
 
-- **Working tree**: /data1/EAT_projs/auto_repo
-- **Bare repo**: /data1/EAT_projs/auto_repo.git
+This guide uses GitHub as the bridge. It keeps the working copy synced to `origin/main` automatically using a Windows Scheduled Task.
 
-#### 1) Create bare repository that will receive pushes
-```bash
-sudo mkdir -p /data1/EAT_projs
-sudo chown -R "$USER":"$USER" /data1/EAT_projs
-cd /data1/EAT_projs
-[ -d auto_repo.git ] || git init --bare auto_repo.git
+## Prerequisites
+
+- Install Git for Windows (`git` available in PATH).
+- The Windows machine can authenticate to GitHub (SSH key or HTTPS with PAT via credential manager).
+- PowerShell 5+.
+
+## 1) Initial clone (one-time)
+
+Open PowerShell as the user that will run the scheduled task, then:
+
+```powershell
+$repoUrl = "git@github.com:YOURORG/auto_repo.git"  # or HTTPS URL
+$root = "C:\\User\\xiajiakun\\Documents\\code"
+$work = Join-Path $root "auto_repo"
+
+if (-not (Test-Path $root)) { New-Item -ItemType Directory -Force -Path $root | Out-Null }
+if (-not (Test-Path (Join-Path $work ".git"))) {
+  git clone $repoUrl $work
+}
 ```
 
-#### 2) Create/prepare the working tree (checked-out copy)
-```bash
-mkdir -p /data1/EAT_projs/auto_repo
-cd /data1/EAT_projs/auto_repo
+If you need to set/change the remote later:
 
-# If this directory is empty, you can do a first clone from the bare repo:
-# (run after step 3 hook is installed, or just clone now and fetch later)
-if [ -z "$(ls -A)" ]; then
-  git clone /data1/EAT_projs/auto_repo.git .
-fi
+```powershell
+$repoUrl = "git@github.com:YOURORG/auto_repo.git"
+$work = "C:\\User\\xiajiakun\\Documents\\code\\auto_repo"
+if (git -C $work remote get-url origin 2>$null) {
+  git -C $work remote set-url origin $repoUrl
+} else {
+  git -C $work remote add origin $repoUrl
+}
 ```
 
-#### 3) Install server-side post-receive hook to auto-update working tree
-Create the hook file:
-```bash
-cat > /data1/EAT_projs/auto_repo.git/hooks/post-receive <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
+## 2) Create a sync script
 
-WORK_TREE="/data1/EAT_projs/auto_repo"
-GIT_DIR="/data1/EAT_projs/auto_repo.git"
+Save this PowerShell script at `C:\User\xiajiakun\Documents\code\auto_repo\sync.ps1`:
 
-export GIT_DIR
+```powershell
+Param(
+  [string]$Branch = "main"
+)
+$ErrorActionPreference = "Stop"
+$work = "C:\\User\\xiajiakun\\Documents\\code\\auto_repo"
+$log  = Join-Path $work ".git\\sync.log"
 
-# Ensure working tree exists
-mkdir -p "$WORK_TREE"
+# Ensure directory exists
+if (-not (Test-Path $work)) { throw "Working directory not found: $work" }
 
-# Update working tree to the latest pushed commit on main (or current default)
-# Determine default branch from the push; fall back to main if unknown.
-read -r oldrev newrev refname || true
-branch="${refname##refs/heads/}"
-if [ -z "${branch:-}" ]; then
-  branch="main"
-fi
-
-# Checkout/update
-/usr/bin/env git --work-tree="$WORK_TREE" checkout -f "$branch"
-/usr/bin/env git --work-tree="$WORK_TREE" reset --hard "$newrev"
-/usr/bin/env git --work-tree="$WORK_TREE" submodule sync --recursive || true
-/usr/bin/env git --work-tree="$WORK_TREE" submodule update --init --recursive || true
-
-# Optional: permissions fixups
-# chown -R www-data:www-data "$WORK_TREE"
-# find "$WORK_TREE" -type d -exec chmod 755 {} +
-# find "$WORK_TREE" -type f -exec chmod 644 {} +
-SH
-chmod +x /data1/EAT_projs/auto_repo.git/hooks/post-receive
+# Do a safe fast sync to origin/$Branch
+& git -C $work fetch --all --prune *>> $log
+& git -C $work reset --hard "origin/$Branch" *>> $log
 ```
 
 Notes:
-- The hook reads the branch that was pushed and updates the working tree accordingly.
-- If you only want to auto-deploy `main`, replace the checkout lines with:
-```bash
-[ "$refname" = "refs/heads/main" ] || exit 0
-/usr/bin/env git --work-tree="$WORK_TREE" checkout -f main
-/usr/bin/env git --work-tree="$WORK_TREE" reset --hard "$newrev"
+- This will overwrite local changes. If you must preserve local edits, replace `reset --hard` with `pull --ff-only`.
+
+## 3) Create a Scheduled Task to run every minute
+
+Run the following once in an elevated PowerShell prompt (Administrator) to register a per-user task:
+
+```powershell
+$taskName = "AutoRepoSync"
+$script   = "C:\\User\\xiajiakun\\Documents\\code\\auto_repo\\sync.ps1"
+$action   = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`" -Branch main"
+$trigger  = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1) -RepetitionDuration ([TimeSpan]::MaxValue)
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Description "Pull origin/main into auto_repo every minute" -User $env:USERNAME -RunLevel Limited -Force
 ```
 
-#### 4) From this machine, add the remote and push
-On your local machine (this one):
-```bash
-cd /Users/kuhn/Documents/code/auto_repo
-# Add remote pointing to the remote bare repo (adjust ssh if needed):
-# Using direct path over SSH:
-# git remote add prod "ssh://YOUR_USER@YOUR_HOST/data1/EAT_projs/auto_repo.git"
-# Or if using a shared filesystem / VPN, you can mount and use a file path.
+- The task runs invisibly every minute. Logs are in `C:\User\xiajiakun\Documents\code\auto_repo\.git\sync.log`.
+- If you prefer to run as SYSTEM or a service account, adjust `-User` accordingly.
 
-# Set upstream and push main
-# git push -u prod main
+## 4) Test manually
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\\User\\xiajiakun\\Documents\\code\\auto_repo\\sync.ps1" -Branch main
+Get-Content -Tail 50 "C:\\User\\xiajiakun\\Documents\\code\\auto_repo\\.git\\sync.log"
 ```
 
-#### 5) Verify
-- Make a commit locally; it should auto-push (post-commit hook).
-- The remote bare repo receives the push, triggers the `post-receive` hook, and updates `/data1/EAT_projs/auto_repo`.
+## Optional: SSH authentication setup
 
-Troubleshooting:
-- Ensure the user that runs the `git-receive-pack` on the remote has write perms on `/data1/EAT_projs/auto_repo.git` and `/data1/EAT_projs/auto_repo`.
-- Check hook logs by temporarily adding `set -x` at the top of the hook.
-- Hooks run non-interactively: set up SSH keys and non-interactive auth.
+Generate an SSH key and add to GitHub (Deploy Key or your account):
+
+```powershell
+ssh-keygen -t ed25519 -C "windows-remote-auto-repo"
+# Start agent and add key (Git for Windows ships ssh-agent service)
+Get-Service ssh-agent | Set-Service -StartupType Automatic
+Start-Service ssh-agent
+ssh-add $HOME\.ssh\id_ed25519
+ssh -T git@github.com
+```
+
+If using HTTPS + PAT, Git Credential Manager will prompt on first pull and cache your credentials.
+
