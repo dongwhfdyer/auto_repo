@@ -29,10 +29,7 @@ if ($CompareOnly) {
   exit 0
 }
 
-if ($diffCount -le 0) {
-  Write-Host "No updates"
-  exit 0
-}
+
 
 if ($Force) {
   Write-Host ("Updates found, forcing reset to origin/{0}..." -f $Branch)
