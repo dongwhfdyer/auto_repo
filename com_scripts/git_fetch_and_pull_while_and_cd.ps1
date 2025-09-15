@@ -1,5 +1,4 @@
-# Set working repo path and change into it (script may run from elsewhere)
-$repo = "C:\User\xiajiakun\Documents\code\auto_repo"
+$repo = "C:\Users\xiajiakun\Documents\code\auto_repo"
 if (-not (Test-Path $repo)) { throw "Repo path not found: $repo" }
 Set-Location $repo
 
@@ -11,7 +10,7 @@ while ($true) {
   if ($diffCount -gt 0) {
     Write-Host "Updates found, pulling..."
     # If using $repo: git -C $repo pull
-    git pull
+    git reset --hard origin/main
   } else {
     Write-Host "No updates"
   }
