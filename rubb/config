@@ -1,0 +1,650 @@
+{
+    "files.autoSave": "onWindowChange",
+    "[jsonc]": {
+        "editor.quickSuggestions": {
+            "strings": true
+        },
+        "editor.suggest.insertMode": "replace"
+    },
+    "editor.formatOnSave": false,
+    "json.schemas": [],
+    "editor.fontLigatures": null,
+    "files.exclude": {
+        "**/*.asus": true,
+        "**/*.bak": true,
+        "**/*.gitignore": true,
+        "**/*.orig": true,
+        "**/*.s": true,
+        "**/*.scvd": true
+    },
+    "workbench.colorTheme": "Default Light+",
+    "workbench.startupEditor": "none",
+    "window.restoreWindows": "none",
+    "security.workspace.trust.untrustedFiles": "open",
+    "files.autoGuessEncoding": true,
+    "editor.lineNumbers": "relative",
+    "vim.autoSwitchInputMethod.obtainIMCmd": "D:\\software\\im_select\\im-select.exe",
+    "vim.autoSwitchInputMethod.defaultIM": "1033",
+    "vim.autoSwitchInputMethod.enable": true,
+    "vim.hlsearch": true,
+    "vim.autoSwitchInputMethod.switchIMCmd": "D:\\software\\im_select\\im-select.exe {im}",
+    "editor.codeActionsOnSave": {},
+    "vim.leader": "<space>",
+    "vim.commandLineModeKeyBindingsNonRecursive": [],
+    "vim.normalModeKeyBindingsNonRecursive": [
+        {
+            "before": [
+                "v",
+                "x"
+            ],
+            "after": [
+                "y",
+                "y",
+                "p",
+                "d",
+                "$",
+                "a",
+                "c",
+                "o",
+                "u",
+                "t",
+                " ",
+                "<",
+                "<",
+                " ",
+                "\"",
+                "h",
+                "e",
+                "r",
+                "e",
+                ":",
+                " ",
+                "<ESC>",
+                "p",
+                "a",
+                " ",
+                "\"",
+                "<",
+                "<",
+                " ",
+                "e",
+                "n",
+                "d",
+                "l",
+                ";",
+                "<ESC>"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "c",
+                "o",
+                "u",
+                "t"
+            ],
+            "commands": [
+                ":%s/cout/\\/\\/ cout/g"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "u",
+                "n",
+                "c",
+                "o",
+                "u",
+                "t"
+            ],
+            "commands": [
+                ":%s/\\/\\/\\s*cout/cout/g"
+            ]
+        },
+        {
+            "before": [
+                "d",
+                "o"
+            ],
+            "after": [
+                "d",
+                "$"
+            ]
+        },
+        {
+            "before": [
+                "d",
+                "u"
+            ],
+            "after": [
+                "d",
+                "t",
+                "("
+            ]
+        },
+        {
+            "before": [
+                "d",
+                "m"
+            ],
+            "after": [
+                "d",
+                "t",
+                ")"
+            ]
+        },
+        {
+            "before": [
+                "v",
+                "o"
+            ],
+            "after": [
+                "v",
+                "$"
+            ]
+        },
+        {
+            "before": [
+                "l",
+                "a"
+            ],
+            "after": [
+                "a",
+                "#",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "k",
+                "k",
+                "u",
+                "h",
+                "n",
+                "-",
+                "b",
+                "l",
+                "o",
+                "c",
+                "k",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "<ESC>"
+            ]
+        },
+        {
+            "before": [
+                "<CR>"
+            ],
+            "after": [
+                "o",
+                "<ESC>"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "s"
+            ],
+            "after": [
+                "d",
+                "i",
+                "["
+            ]
+        },
+        {
+            "before": [
+                "l",
+                "l"
+            ],
+            "after": [
+                "d",
+                "i",
+                "w"
+            ]
+        },
+        {
+            "before": [
+                "m"
+            ],
+            "commands": [
+                "bo.vimBookMarkTrigger"
+            ]
+        },
+        {
+            "before": [
+                "t",
+                "t"
+            ],
+            "after": [
+                "?",
+                "k",
+                "k",
+                "u",
+                "h",
+                "n",
+                "-",
+                "b",
+                "l",
+                "o",
+                "c",
+                "k",
+                "<CR>",
+                "v",
+                "N"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "<leader>"
+            ],
+            "commands": [
+                "editor.action.commentLine"
+            ]
+        },
+        {
+            "before": [
+                "d",
+                "c"
+            ],
+            "after": [
+                "d",
+                "F",
+                "#",
+                "x"
+            ]
+        },
+        {
+            "before": [
+                "l",
+                "j"
+            ],
+            "after": [
+                "^",
+                "v",
+                "$"
+            ]
+        },
+        {
+            "before": [
+                "<leader>",
+                "d"
+            ],
+            "after": [
+                "d",
+                "i",
+                ")"
+            ]
+        },
+        {
+            "before": [
+                "s"
+            ],
+            "commands": [
+                "leap.findForward"
+            ]
+        },
+        {
+            "before": [
+                "S"
+            ],
+            "commands": [
+                "leap.findBackward"
+            ]
+        },
+        {
+            "before": [
+                "l",
+                "s"
+            ],
+            "after": [
+                "a",
+                "L",
+                "i",
+                "s",
+                "t",
+                "N",
+                "o",
+                "d",
+                "e",
+                "*"
+            ]
+        },
+        {
+            "before": [
+                "l",
+                "d"
+            ],
+            "after": [
+                "a",
+                "-",
+                ">",
+                "n",
+                "e",
+                "x",
+                "t"
+            ]
+        },
+        {
+            "before": [
+                "l",
+                "f"
+            ],
+            "after": [
+                "y",
+                "i",
+                "w",
+                "e",
+                "a",
+                " ",
+                "=",
+                " ",
+                "<ESC>",
+                "p",
+                "a",
+                "-",
+                ">",
+                "n",
+                "e",
+                "x",
+                "t",
+                ";"
+            ]
+        },
+        {
+            "before": [
+                "l",
+                "h"
+            ],
+            "after": [
+                "a",
+                "(",
+                "<ESC>",
+                "\"",
+                "+",
+                "p",
+                "<ESC>",
+                "F",
+                ":",
+                "x",
+                "i",
+                "#",
+                "L",
+                "<ESC>",
+                "F",
+                "(",
+                "i",
+                "[",
+                "]",
+                "<ESC>",
+                "h",
+                "a"
+            ]
+        }
+    ],
+    "vim.visualModeKeyBindingsNonRecursive": [
+        {
+            "before": [
+                "<leader>",
+                "<leader>"
+            ],
+            "commands": [
+                "editor.action.commentLine"
+            ]
+        },
+        {
+            "before": [
+                "t",
+                "g"
+            ],
+            "commands": [
+                "editor.action.showContextMenu"
+            ]
+        },
+        {
+            "before": [
+                "v",
+                "z"
+            ],
+            "after": [
+                "d",
+                "a",
+                "#",
+                "<Esc>",
+                "9",
+                "a",
+                "-",
+                "<Esc>",
+                "a",
+                "k",
+                "k",
+                "u",
+                "h",
+                "n",
+                "-",
+                "b",
+                "l",
+                "o",
+                "c",
+                "k",
+                "<Esc>",
+                "3",
+                "0",
+                "a",
+                "-",
+                "<Esc>",
+                "o",
+                "#",
+                "<Esc>",
+                "9",
+                "a",
+                "-",
+                "<Esc>",
+                "a",
+                "k",
+                "k",
+                "u",
+                "h",
+                "n",
+                "-",
+                "b",
+                "l",
+                "o",
+                "c",
+                "k",
+                "<Esc>",
+                "3",
+                "0",
+                "a",
+                "-",
+                "<Esc>",
+                "O",
+                "<Esc>",
+                "p",
+                "k",
+                "$",
+                "a",
+                " ",
+                "#",
+                " ",
+                "<Esc>"
+            ]
+        }
+    ],
+    "remote.SSH.remotePlatform": {
+        "aaa": "linux",
+        "bbb": "linux",
+        "titan": "linux",
+        "aajian": "linux",
+        "fuudan": "linux",
+        "pcl111_1": "linux",
+        "pcl111_2": "linux",
+        "ftt_3090": "linux",
+        "cider_3090_node_02": "linux",
+        "ftt_3090_node_03": "linux",
+        "*.gitpod.io": "linux",
+        "connect.yza1.seetacloud.com": "linux"
+    },
+    "[python]": {
+        "editor.formatOnType": true,
+        "editor.defaultFormatter": "null"
+    },
+    "diffEditor.wordWrap": "off",
+    "editor.inlineSuggest.enabled": true,
+    "debug.console.wordWrap": false,
+    "workbench.editorAssociations": {
+        "*.py": "default",
+        "*.md": "vscode.markdown.preview.editor"
+    },
+    "vim.commandLineModeKeyBindings": [],
+    "cmake.showOptionsMovedNotification": false,
+    "files.watcherInclude": [
+        "/home/ftt/LLaVA/*"
+    ],
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/*/**": true,
+        "**/.hg/store/**": true,
+        "**/*.png": true,
+        "**/*.jpg": true,
+        "**/*.jpeg": true,
+        "**/*.gif": true,
+        "**/*.bmp": true,
+        "**/*.svg": true,
+        "**/*.ico": true
+    },
+    "workbench.colorCustomizations": {
+        "tab.activeBackground": "#f0edba9a"
+    },
+    "todo-tree.general.tags": [
+        "KTUDO:"
+    ],
+    "todo-tree.highlights.defaultHighlight": {
+        "icon": "alert",
+        "type": "text",
+        "foreground": "#FF0000",
+        "background": "#FFFFFF",
+        "opacity": 50,
+        "iconColour": "#0000FF"
+    },
+    "todo-tree.highlights.customHighlight": {
+        "KTODO": {
+            "icon": "check",
+            "type": "line"
+        },
+        "FIXME": {
+            "foreground": "#000000",
+            "iconColour": "#FFFF00",
+            "gutterIcon": true
+        }
+    },
+    "editor.comments.ignoreEmptyLines": false,
+    "github.copilot.enable": {
+        "*": true,
+        "plaintext": false,
+        "markdown": false,
+        "scminput": false
+    },
+    "github.copilot.editor.enableAutoCompletions": true,
+    "leetcode.endpoint": "leetcode-cn",
+    "fileheader.customMade": {},
+    "vscode-neovim.neovimExecutablePaths.win32": "\"C:\\Program Files\\Neovim\\bin\\nvim.exe\"",
+    "vim.neovimPath": "\"C:\\Program Files\\Neovim\\bin\\nvim.exe\"",
+    "leetcode-problem-rating.hint.setDefaultLanguage": false,
+    "errorLens.enabledDiagnosticLevels": [
+        "error",
+        "warning",
+        "info",
+        "hint"
+    ],
+    "errorLens.enabled": false,
+    "leetcode-problem-rating.hint.configWebviewMarkdown": false,
+    "leetcode-problem-rating.hint.commentDescription": false,
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "icon": "terminal-powershell"
+        },
+        "Command Prompt": {
+            "path": [
+                "${env:windir}\\Sysnative\\cmd.exe",
+                "${env:windir}\\System32\\cmd.exe"
+            ],
+            "args": [],
+            "icon": "terminal-cmd"
+        },
+        "Git Bash": {
+            "source": "Git Bash"
+        },
+        "Ubuntu-22.04 (WSL)": {
+            "path": "C:\\windows\\System32\\wsl.exe",
+            "args": [
+                "-d",
+                "Ubuntu-22.04"
+            ]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "Ubuntu-22.04 (WSL)",
+    "leetcode-problem-rating.workspaceFolder": "C:\\Users\\Administrator\\.lcpr",
+    "leetcode-problem-rating.hint.commandShortcut": false,
+    "outline-map.debug": true,
+    "leetcode.workspaceFolder": "/home/kuhn/.leetcode",
+    "leetcode.hint.configWebviewMarkdown": false,
+    "leetcode.hint.commentDescription": false,
+    "leetcode.defaultLanguage": "cpp",
+    "leetcode.hint.commandShortcut": false,
+    "leetcode.problems.sortStrategy": "Acceptance Rate (Ascending)",
+    "continue.enableTabAutocomplete": false,
+    "workbench.editor.showTabs": "none",
+    "Codegeex.EnableExtension": true,
+    "Codegeex.Privacy": true,
+    "Codegeex.Chat.LanguagePreference": "English",
+    "Codegeex.Comment.LanguagePreference": "English",
+    "aide.openaiKey": "sk-zk213543ce5cb281445cc6fc37e7e816bb4663619e49e4ec",
+    "aide.openaiBaseUrl": "https://api.zhizengzeng.com/v1",
+    "aide.codeViewerHelperPrompt": "You are a programming language commentator.\nYou need to help me add comments to #{sourceLanguage} code. \nTrace the important tensor shapes.\nDo not change the original code, add comments about important list or tensor shapes, and comments about meaning of each important line.\nPlease do not reply with any text other than the code, and do not use markdown syntax.\nHere is the code you need to comment on:\n\n#{content}",
+    "aide.aiCommandCopyBeforeRun": false,
+    "cursor.cpp.disabledLanguages": [
+        "plaintext",
+        "markdown",
+        "scminput"
+    ],
+    "terminal.integrated.inheritEnv": false,
+    "git.autofetch": true,
+    "Codegeex.License": "",
+    "update.mode": "none"
+}
