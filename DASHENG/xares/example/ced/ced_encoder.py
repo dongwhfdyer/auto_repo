@@ -35,13 +35,29 @@ class CedEncoder(torch.nn.Module):
         if checkpoint_path is not None:
             print(f"Loading CED {model_size} model from: {checkpoint_path}")
             checkpoint = torch.load(checkpoint_path, map_location='cpu')
+            
             # Handle different checkpoint formats
             if 'model' in checkpoint:
-                self.model.load_state_dict(checkpoint['model'])
+                # Standard format with 'model' key
+                self.model.load_state_dict(checkpoint['model'], strict=False)
+                print(f"Loaded model from checkpoint['model']")
             elif 'state_dict' in checkpoint:
-                self.model.load_state_dict(checkpoint['state_dict'])
+                # Format with 'state_dict' key
+                self.model.load_state_dict(checkpoint['state_dict'], strict=False)
+                print(f"Loaded model from checkpoint['state_dict']")
+            elif 'model_state_dict' in checkpoint:
+                # Format with 'model_state_dict' key
+                self.model.load_state_dict(checkpoint['model_state_dict'], strict=False)
+                print(f"Loaded model from checkpoint['model_state_dict']")
             else:
-                self.model.load_state_dict(checkpoint)
+                # Direct state dict format
+                self.model.load_state_dict(checkpoint, strict=False)
+                print(f"Loaded model from direct state dict")
+            
+            # Print conversion info if available
+            if 'conversion_info' in checkpoint:
+                info = checkpoint['conversion_info']
+                print(f"Conversion info: {info.get('ced_architecture', 'unknown')} from {info.get('source_path', 'unknown')}")
         
         # Set model to evaluation mode
         self.model.eval()
