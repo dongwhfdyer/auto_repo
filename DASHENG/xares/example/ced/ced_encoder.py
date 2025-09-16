@@ -82,7 +82,10 @@ class CedEncoder(torch.nn.Module):
                         chunk = torch.nn.functional.pad(chunk, (0, self.sampling_rate - chunk.shape[-1]))
                     
                     # Get features from the model (before the final classification layer)
-                    chunk_output = self.model.forward_features(self.model.front_end(chunk))
+                    # front_end returns [b, f, t], but forward_features expects [b, 1, f, t]
+                    spectrogram = self.model.front_end(chunk)  # [b, f, t]
+                    spectrogram = spectrogram.unsqueeze(1)     # [b, 1, f, t]
+                    chunk_output = self.model.forward_features(spectrogram)
                     outputs.append(chunk_output)
                 
                 # Concatenate all chunks
@@ -94,7 +97,10 @@ class CedEncoder(torch.nn.Module):
                     audio = torch.nn.functional.pad(audio, (0, self.sampling_rate - audio.shape[-1]))
                 
                 # Get features from the model (before the final classification layer)
-                output = self.model.forward_features(self.model.front_end(audio))
+                # front_end returns [b, f, t], but forward_features expects [b, 1, f, t]
+                spectrogram = self.model.front_end(audio)  # [b, f, t]
+                spectrogram = spectrogram.unsqueeze(1)     # [b, 1, f, t]
+                output = self.model.forward_features(spectrogram)
         
         return output
 
