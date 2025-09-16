@@ -1,4 +1,5 @@
 import json, torch
+import torchaudio.transforms as audio_transforms
 from pathlib import Path
 
 def read_config(model_dir):
@@ -46,10 +47,69 @@ def map_config_for_dasheng(cfg):
     # Also ensure patch settings, pooling, target_length, hop_size match Dasheng
     return mapped
 
+def find_frontend_mapping(hf_state_dict, dasheng_config):
+    """Find the correct mapping from HF model to dasheng frontend keys"""
+    print("Looking for frontend key mappings...")
+    
+    # Common patterns for audio frontend in HF models
+    hf_frontend_patterns = [
+        'feature_extractor', 'feature_encoder', 'conv_layers', 'conv_layers_conv',
+        'spectrogram', 'mel_spectrogram', 'stft', 'mel_scale', 'window',
+        'audio_encoder', 'preprocessor', 'frontend'
+    ]
+    
+    # Find HF keys that might be frontend related
+    hf_frontend_keys = []
+    for key in hf_state_dict.keys():
+        if any(pattern in key.lower() for pattern in hf_frontend_patterns):
+            hf_frontend_keys.append(key)
+    
+    print(f"Found {len(hf_frontend_keys)} potential frontend keys in HF model:")
+    for key in hf_frontend_keys:
+        print(f"  {key}")
+    
+    # Expected dasheng frontend keys
+    expected_dasheng_keys = [
+        "front_end.0.spectrogram.window",
+        "front_end.0.mel_scale.fb"
+    ]
+    
+    missing_keys = []
+    for expected_key in expected_dasheng_keys:
+        if expected_key not in hf_state_dict:
+            missing_keys.append(expected_key)
+    
+    print(f"Missing dasheng keys: {missing_keys}")
+    
+    return hf_frontend_keys, missing_keys
+
+def convert_hf_frontend_to_dasheng(hf_state_dict, dasheng_config):
+    """Convert HF frontend keys to dasheng format"""
+    hf_frontend_keys, missing_keys = find_frontend_mapping(hf_state_dict, dasheng_config)
+    
+    if not missing_keys:
+        print("No missing frontend keys found!")
+        return hf_state_dict
+    
+    # If we have HF frontend keys, try to map them
+    if hf_frontend_keys:
+        print("Attempting to map HF frontend keys to dasheng format...")
+        # This would require specific knowledge of the HF model structure
+        # For now, we'll flag this as needing manual investigation
+        print("WARNING: Manual key mapping required. Please investigate the HF model structure.")
+        print("Consider using the investigate_hf_model.py script to understand the mapping.")
+    
+    return hf_state_dict
+
 def convert_hf_to_dasheng_pt(model_dir, out_path):
     cfg = map_config_for_dasheng(read_config(model_dir))
     sd = normalize_keys(read_state_dict(model_dir))
+    
+    # Investigate and convert frontend keys properly
+    sd = convert_hf_frontend_to_dasheng(sd, cfg)
+    
     torch.save({"model": sd, "config": cfg}, out_path)
     print(f"Saved Dasheng checkpoint to {out_path}")
+    print("NOTE: If you see missing key warnings, run investigate_hf_model.py to understand the mapping")
 
 # convert_hf_to_dasheng_pt("/path/to/hf_repo_dir", "/path/to/dasheng_converted.pt")
