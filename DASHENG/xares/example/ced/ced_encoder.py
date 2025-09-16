@@ -13,7 +13,7 @@ class CedEncoder(torch.nn.Module):
     def __init__(self, model_size='mini', checkpoint_path=None):
         super().__init__()
         self.sampling_rate = 16000
-        self.hop_size_in_ms = 40  # Based on the model's hop_size=160 and sampling_rate=16000
+        self.hop_size_in_ms = 10  # Correct calculation: (160 / 16000) * 1000 = 10 ms
         
         # Load the CED model based on size
         if model_size == 'tiny':
@@ -64,11 +64,21 @@ class CedEncoder(torch.nn.Module):
         
         # Calculate max length for chunking (10 seconds)
         self.max_length = int(10 * self.sampling_rate)
+    
+    def to(self, device):
+        """Move the model to the specified device"""
+        super().to(device)
+        self.model = self.model.to(device)
+        return self
 
     def forward(self, audio: torch.Tensor):
         assert isinstance(audio, torch.Tensor)
         if audio.ndim == 1:
             audio = audio.unsqueeze(0)
+        
+        # Ensure audio is on the same device as the model
+        device = next(self.model.parameters()).device
+        audio = audio.to(device)
         
         batch_size = audio.shape[0]
         
@@ -82,9 +92,10 @@ class CedEncoder(torch.nn.Module):
                         chunk = torch.nn.functional.pad(chunk, (0, self.sampling_rate - chunk.shape[-1]))
                     
                     # Get features from the model (before the final classification layer)
-                    # front_end returns [b, f, t], but forward_features expects [b, 1, f, t]
+                    # Follow the same pipeline as CED model: front_end -> init_bn -> forward_features
                     spectrogram = self.model.front_end(chunk)  # [b, f, t]
                     spectrogram = spectrogram.unsqueeze(1)     # [b, 1, f, t]
+                    spectrogram = self.model.init_bn(spectrogram)  # Apply batch normalization
                     chunk_output = self.model.forward_features(spectrogram)
                     outputs.append(chunk_output)
                 
@@ -97,9 +108,10 @@ class CedEncoder(torch.nn.Module):
                     audio = torch.nn.functional.pad(audio, (0, self.sampling_rate - audio.shape[-1]))
                 
                 # Get features from the model (before the final classification layer)
-                # front_end returns [b, f, t], but forward_features expects [b, 1, f, t]
+                # Follow the same pipeline as CED model: front_end -> init_bn -> forward_features
                 spectrogram = self.model.front_end(audio)  # [b, f, t]
                 spectrogram = spectrogram.unsqueeze(1)     # [b, 1, f, t]
+                spectrogram = self.model.init_bn(spectrogram)  # Apply batch normalization
                 output = self.model.forward_features(spectrogram)
         
         return output
