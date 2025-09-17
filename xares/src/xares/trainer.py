@@ -98,6 +98,8 @@ class Trainer:
     save_model: bool = True
     decay_fraction: float = 0.1  # Decay learning rate
     task_type: InitVar[Literal["frame", "clip", "contrastive", "asr"]] = "clip"
+    task_name: str = "task"
+    output_dir: str = "outputs"
 
     def __post_init__(self, task_type: Literal["frame", "clip", "contrastive", "asr"] = "clip"):
         try:
