@@ -315,6 +315,8 @@ class XaresTask:
             lr=self.config.learning_rate,
             max_epochs=self.config.epochs,
             task_type=self.config.task_type,
+            task_name=self.config.name,
+            output_dir=self.config.env_root,
             valid_every=self.config.valid_every,
         )
 
@@ -378,6 +380,9 @@ class XaresTask:
         if not self.config.do_knn:
             logger.warning(f"Skip KNN evaluation for {self.config.name}.")
             return knn_score, eval_size
+
+        if not os.path.exists(self.config.ckpt_dir):
+            os.makedirs(self.config.ckpt_dir, exist_ok=True)
 
         score_file = self.ckpt_dir / "knn_score.txt"
 
@@ -447,7 +452,7 @@ class XaresTask:
             training=False,
             label_processor=self.label_processor,
         )
-        knn_trainer = KNNTrainer(num_classes=self.config.output_dim)
+        knn_trainer = KNNTrainer(num_classes=self.config.output_dim, task_name=self.config.name, output_dir=self.config.env_root)
         return knn_trainer.train_and_eval(dl_train, dl_eval), self.config.eval_weight
 
     def run(self):

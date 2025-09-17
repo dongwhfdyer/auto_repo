@@ -11,11 +11,12 @@ from xares.common import setup_global_logger
 from xares.metrics import weighted_average
 from xares.task import XaresTask
 from xares.utils import attr_from_py_path
-
+import shutil
 
 def worker(
     encoder_py: None | str,
     task_py: str,
+    output_dir: str,
     do_download: bool = False,
     do_encode: bool = False,
     do_mlp: bool = False,
@@ -26,6 +27,7 @@ def worker(
 
     # Task setup
     config = attr_from_py_path(task_py, endswith="_config")(encoder)
+    config.env_root = output_dir
     if config.disabled:
         logger.warning(f"Task {config.name} is disabled, skipping")
         return config.formal_name, (0, 0), (0, 0), True
@@ -58,17 +60,25 @@ def worker(
         knn_score = task.run_knn()
         logger.info(f"KNN score of {config.name}: {knn_score}")
 
+    if (do_mlp or do_knn) and task.encoded_tar_dir.exists():
+        import shutil
+        try:
+            shutil.rmtree(task.encoded_tar_dir)
+            logger.info(f"Removed {task.encoded_tar_dir}")
+        except Exception as e:
+            logger.error(f"Failed to remove {task.encoded_tar_dir}: {e}")
+
     torch.cuda.empty_cache()
     return task.config.formal_name, mlp_score, knn_score, task.config.private
 
 
-def stage_1(encoder_py, task_py, gpu_id):
+def stage_1(encoder_py, task_py, gpu_id, output_dir):
     torch.cuda.set_device(gpu_id)
-    return worker(encoder_py, task_py, do_encode=True)
+    return worker(encoder_py, task_py, output_dir=output_dir, do_encode=True)
 
 
-def stage_2(encoder_py, task_py, result: dict):
-    result.update({task_py: worker(encoder_py, task_py, do_mlp=True, do_knn=True)})
+def stage_2(encoder_py, task_py, result: dict, output_dir):
+    result.update({task_py: worker(encoder_py, task_py, output_dir=output_dir, do_mlp=True, do_knn=True)})
 
 
 def main(args):
@@ -77,7 +87,7 @@ def main(args):
     torch.multiprocessing.set_start_method("spawn")
 
     # Stage 0: Download all datasets
-    stage_0 = partial(worker, do_download=True)
+    stage_0 = partial(worker, do_download=False, output_dir=args.output_dir)
     if args.from_stage <= 0:
         try:
             if enable_multiprocessing:
@@ -130,11 +140,11 @@ def main(args):
                 with mp.Pool(processes=args.max_jobs) as pool:
                     pool.starmap(
                         stage_1,
-                        [(args.encoder_py, task_py, i % num_gpus) for i, task_py in enumerate(args.tasks_py)],
+                        [(args.encoder_py, task_py, i % num_gpus, args.output_dir) for i, task_py in enumerate(args.tasks_py)],
                     )
             else:
                 for task_py in args.tasks_py:
-                    worker(args.encoder_py, task_py, do_encode=True)
+                    worker(args.encoder_py, task_py, output_dir=args.output_dir, do_encode=True)
 
             logger.info("Stage 1 completed: All tasks encoded.")
         except FileNotFoundError as e:
@@ -157,21 +167,22 @@ def main(args):
             return_dict = manager.dict()
             with mp.Pool(processes=args.max_jobs) as pool:
                 pool.starmap(
-                    partial(stage_2, result=return_dict),
+                    partial(stage_2, result=return_dict, output_dir=args.output_dir),
                     [(args.encoder_py, task_py) for task_py in args.tasks_py],
                 )
         else:
             return_dict = {}
             for task_py in args.tasks_py:
-                return_dict[task_py] = worker(args.encoder_py, task_py, do_mlp=True, do_knn=True)
+                return_dict[task_py] = worker(args.encoder_py, task_py, output_dir=args.output_dir, do_mlp=True, do_knn=True)
         logger.info("Scoring completed: All tasks scored.")
 
         # Print results
-        df = pd.DataFrame(return_dict.items(), columns=["py", "Scores"]).drop(columns=["py"])
+        df = pd.DataFrame(return_dict.items(), columns=["py", "Scores"])
+        df.drop(columns=["py"], inplace=True)
         df["Task"] = df["Scores"].apply(lambda x: x[0])
         df["MLP_Score"] = df["Scores"].apply(lambda x: x[1][0])
         df["KNN_Score"] = df["Scores"].apply(lambda x: x[2][0])
-        df["Private"] = df["Scores"].apply(lambda x: x[3] if len(x) > 3 else True)
+        df["Private"] = df["Scores"].apply(lambda x: x[3])
         df.drop(columns=["Scores"], inplace=True)
         df.sort_values(by="Task", inplace=True)
 
@@ -198,6 +209,7 @@ if __name__ == "__main__":
         help="Tasks path. eg: src/tasks/*.py",
         nargs="+",
     )
+    parser.add_argument("--output_dir", type=str, default="outputs", help="Output directory.")
     parser.add_argument("--max-jobs", type=int, default=1, help="Maximum number of concurrent tasks.")
     parser.add_argument("--from-stage", default=0, type=int, help="First stage to run.")
     parser.add_argument("--to-stage", default=2, type=int, help="Last stage to run.")
