@@ -281,6 +281,16 @@ class XaresTask:
             total_eval_size = int(np.average(eval_sizes))
             logger.info(f"The averaged {self.config.metric} of 5 folds is: {avg_score}")
 
+            # Save individual fold results for MLP
+            mlp_fold_scores_file = self.ckpt_dir / "mlp_fold_scores.txt"
+            with open(mlp_fold_scores_file, "w") as f:
+                f.write(f"# MLP Individual Fold Scores\n")
+                f.write(f"# Format: fold_index,score,eval_size\n")
+                for i, (fold_idx, score, eval_size) in enumerate(zip(splits, acc, eval_sizes)):
+                    f.write(f"{fold_idx},{score},{eval_size}\n")
+                f.write(f"# Average: {avg_score},{total_eval_size}\n")
+            logger.info(f"Saved individual MLP fold scores to {mlp_fold_scores_file}")
+
             mlp_score = avg_score
             eval_size = total_eval_size
         else:
@@ -417,6 +427,16 @@ class XaresTask:
             avg_score = np.mean(scores)
             total_eval_size = int(np.average(eval_sizes))
             logger.info(f"The averaged KNN {self.config.metric} of 5 folds is: {avg_score}")
+
+            # Save individual fold results for KNN
+            knn_fold_scores_file = self.ckpt_dir / "knn_fold_scores.txt"
+            with open(knn_fold_scores_file, "w") as f:
+                f.write(f"# KNN Individual Fold Scores\n")
+                f.write(f"# Format: fold_index,score,eval_size\n")
+                for i, (fold_idx, score, eval_size) in enumerate(zip(splits, scores, eval_sizes)):
+                    f.write(f"{fold_idx},{score},{eval_size}\n")
+                f.write(f"# Average: {avg_score},{total_eval_size}\n")
+            logger.info(f"Saved individual KNN fold scores to {knn_fold_scores_file}")
 
             knn_score = avg_score
             eval_size = total_eval_size
