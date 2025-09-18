@@ -4,7 +4,7 @@ import soundfile as sf
 from pathlib import Path
 import pandas as pd
 from loguru import logger
-from xares.audiwebdataset import write_audio_tar
+from xares.audiowebdataset import write_audio_tar
 from xares.common import XaresSettings
 from xares.utils import mkdir_if_not_exists
 

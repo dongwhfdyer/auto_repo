@@ -377,8 +377,12 @@ class ImageEncoder(ModalitySpecificEncoder):
         )
         # Use 1D sliding window patch embedding (like ECHO)
         # band_spectrograms: (total_bands, band_width, T)
-        # Apply 1D patch embedding with sliding window
-        patches = self.patch_embed_1d(band_spectrograms)  # (total_bands, num_patches, embed_dim)
+        # Conv2d expects (N, C=1, H=band_width, W=T)
+        band_spectrograms = band_spectrograms.unsqueeze(1)
+        # Apply 1D patch embedding with sliding window -> (N, D, 1, num_patches)
+        patches_4d = self.patch_embed_1d(band_spectrograms)
+        # Reshape to (N, num_patches, D)
+        patches = patches_4d.flatten(2).transpose(1, 2)
         
         # Store frequency positional encoding for later use (NO positional encoding here)
         self._freq_pos_emb = freq_pos_emb
