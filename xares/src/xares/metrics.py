@@ -14,7 +14,6 @@ METRICS_TYPE = Literal[
     "accuracy",
     "EER",
     "mAP",
-    "AUC",
     "recallatk_r1",
     "MAE",
     "MSE",
@@ -160,52 +159,6 @@ class WerScore(Metric):
         return wer_score
 
 
-def _compute_auc(pred: torch.Tensor, target: torch.Tensor, average: str = "macro") -> float:
-    """
-    Compute ROC AUC supporting binary, multilabel, and multiclass.
-
-    - Binary: target (B,), pred (B,) or (B,1) logits -> sigmoid -> prob
-    - Multilabel: target (B,C) in {0,1}, pred (B,C) logits -> sigmoid -> prob
-    - Multiclass: target (B,) int labels, pred (B,C) logits -> softmax -> prob, OVR macro
-    """
-    from sklearn.metrics import roc_auc_score
-
-    with torch.no_grad():
-        y = target.detach()
-        y_pred = pred.detach()
-
-        # Normalize shapes
-        # Binary case: (B,) or (B,1)
-        if y.dim() == 1 and (y_pred.dim() == 1 or (y_pred.dim() == 2 and y_pred.size(1) == 1)):
-            scores = torch.sigmoid(y_pred.view(-1))
-            y_true = y.view(-1)
-            return float(roc_auc_score(y_true.cpu().numpy(), scores.cpu().numpy()))
-
-        # Multilabel case: (B,C) targets in {0,1}
-        if y.dim() == 2 and y_pred.dim() == 2 and y.size(1) == y_pred.size(1):
-            scores = torch.sigmoid(y_pred)
-            return float(
-                roc_auc_score(y.cpu().numpy(), scores.cpu().numpy(), average=average)
-            )
-
-        # Multiclass case: y (B,) labels, y_pred (B,C) logits
-        if y.dim() == 1 and y_pred.dim() == 2:
-            probs = torch.softmax(y_pred, dim=1)
-            return float(
-                roc_auc_score(y.cpu().numpy(), probs.cpu().numpy(), multi_class="ovr", average=average)
-            )
-
-        # Fallback: try to compute directly
-        probs = y_pred
-        if y_pred.dim() == 2 and y_pred.size(1) == 1:
-            probs = torch.sigmoid(y_pred.view(-1))
-        return float(roc_auc_score(y.cpu().numpy(), probs.cpu().numpy()))
-
-
-def AUCMetric(average: str = "macro"):
-    return EpochMetric(compute_fn=lambda pred, target: _compute_auc(pred, target, average=average))
-
-
 ALL_METRICS: Dict[METRICS_TYPE, EvalMetric] = dict(
     accuracy=EvalMetric(Accuracy, score=1.0),
     frame_mAP=EvalMetric(
@@ -219,7 +172,6 @@ ALL_METRICS: Dict[METRICS_TYPE, EvalMetric] = dict(
         partial(SegmentF1Metric, output_transform=lambda x: (x[0].sigmoid().round(), x[1]), average="micro"), score=1.0
     ),
     mAP=EvalMetric(AveragePrecision, score=1.0),
-    AUC=EvalMetric(AUCMetric, score=1.0),
     MAE=EvalMetric(MeanAbsoluteError, score=-1.0),
     MSE=EvalMetric(MeanSquaredError, score=-1.0),
     recallatk_r1=EvalMetric(partial(ClapScore, select="r1"), score=1.0),
