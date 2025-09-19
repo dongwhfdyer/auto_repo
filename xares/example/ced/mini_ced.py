@@ -2,9 +2,7 @@ import torch
 import sys
 import os
 
-# Add the CED directory to the path so we can import the models
-# TODO: Modify this path to point to your CED directory
-sys.path.append('/data1/EAT_projs/CED')
+sys.path.append('/data1/repos/EAT_projs/CED')
 
 from models.audiotransformer import ced_mini
 

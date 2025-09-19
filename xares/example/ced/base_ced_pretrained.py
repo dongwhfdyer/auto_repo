@@ -4,7 +4,7 @@ import os
 
 sys.path.append('/data1/repos/EAT_projs/CED')
 
-from models.audiotransformer import ced_small
+from models.audiotransformer import ced_base
 
 
 class CedEncoder(torch.nn.Module):
@@ -13,15 +13,15 @@ class CedEncoder(torch.nn.Module):
         self.sampling_rate = 16000
         self.hop_size_in_ms = 10
 
-        # Default checkpoint for small
-        default_ckpt = '/data1/repos/EAT_projs/checkpoints/weights/audiotransformer_small_mAP_4958.pt'
+        # Default checkpoint for base (updated path)
+        default_ckpt = '/data1/repos/EAT_projs/checkpoints/weights/audiotransformer_base_mae_as_10s.pt'
         use_ckpt = checkpoint_path or (default_ckpt if os.path.isfile(default_ckpt) else None)
 
-        self.model = ced_small(pretrained=use_ckpt is None)
-        self.output_dim = 384
+        self.model = ced_base(pretrained=use_ckpt is None)
+        self.output_dim = 768
 
         if use_ckpt is not None:
-            print(f"Loading CED small model from: {use_ckpt}")
+            print(f"Loading CED base model from: {use_ckpt}")
             checkpoint = torch.load(use_ckpt, map_location='cpu')
 
             if 'model' in checkpoint:
@@ -82,10 +82,9 @@ class CedEncoder(torch.nn.Module):
 if __name__ == "__main__":
     from xares.audio_encoder_checker import check_audio_encoder
 
-    print("Testing CED small encoder...")
+    print("Testing CED base encoder...")
     encoder = CedEncoder()
     if check_audio_encoder(encoder):
-        print("✓ CED small encoder passed validation")
+        print("✓ CED base encoder passed validation")
     else:
-        print("✗ CED small encoder failed validation")
-
+        print("✗ CED base encoder failed validation")

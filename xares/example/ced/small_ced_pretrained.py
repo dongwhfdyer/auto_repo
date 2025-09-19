@@ -13,8 +13,8 @@ class CedEncoder(torch.nn.Module):
         self.sampling_rate = 16000
         self.hop_size_in_ms = 10
 
-        # Default checkpoint for small
-        default_ckpt = '/data1/repos/EAT_projs/checkpoints/weights/audiotransformer_small_mAP_4958.pt'
+        # Default checkpoint for small (updated path)
+        default_ckpt = '/data1/repos/EAT_projs/checkpoints/weights/audiotransformer_small_mae_as_10s.pt'
         use_ckpt = checkpoint_path or (default_ckpt if os.path.isfile(default_ckpt) else None)
 
         self.model = ced_small(pretrained=use_ckpt is None)
@@ -88,4 +88,3 @@ if __name__ == "__main__":
         print("✓ CED small encoder passed validation")
     else:
         print("✗ CED small encoder failed validation")
-
