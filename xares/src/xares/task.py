@@ -4,6 +4,7 @@ import io
 import json
 import os
 import sys
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Tuple
@@ -34,6 +35,18 @@ try:
 except ImportError:
     logger.warning("Binary classification evaluator not available. DCASE metrics will be skipped.")
     BINARY_EVALUATOR_AVAILABLE = False
+
+
+def _infer_run_tag_from_urls(eval_url: List[str] | str) -> str:
+    urls = [str(u) for u in (eval_url if isinstance(eval_url, list) else [eval_url])]
+    for u in urls:
+        m = re.search(r"fold[_-](\d+)", u)
+        if m:
+            return f"fold_{m.group(1)}"
+        for s in ["train", "valid", "test"]:
+            if s in u:
+                return s
+    return "unknown"
 
 
 @dataclass
@@ -443,32 +456,49 @@ class XaresTask:
                     y_pred_logits = np.array(all_logits)
                     
                     # Save continuous scores
-                    self.save_continuous_scores(y_true, y_pred_logits, all_filenames, "mlp")
+                    run_tag = _infer_run_tag_from_urls(eval_url)
+                    self.save_continuous_scores(y_true, y_pred_logits, all_filenames, "mlp", run_tag)
                     
                     # Calculate and save DCASE metrics
                     dcase_metrics = self.evaluate_dcase_metrics(y_true, y_pred_logits, "mlp")
                     
                     # Save DCASE metrics to CSV
                     if dcase_metrics:
-                        self._save_dcase_metrics_csv(dcase_metrics, "mlp")
+                        self._save_dcase_metrics_csv(dcase_metrics, "mlp", run_tag)
                         
             except Exception as e:
                 logger.error(f"Error collecting MLP scores for DCASE: {e}")
         
         return score
 
-    def _save_dcase_metrics_csv(self, metrics: Dict[str, float], method_name: str):
-        """Save DCASE metrics to CSV file"""
+    def _save_dcase_metrics_csv(self, metrics: Dict[str, float], method_name: str, run_tag: str):
+        """Save DCASE metrics to CSV file (per-fold and aggregate)."""
         try:
-            results_dir = self.ckpt_dir / "dcase_results"
-            results_dir.mkdir(exist_ok=True)
-            
-            # Create metrics DataFrame
+            method_dir = self.ckpt_dir / "dcase_results" / method_name
+            run_dir = method_dir / run_tag
+            run_dir.mkdir(parents=True, exist_ok=True)
+
+            # 1) Per-run file
             metrics_df = pd.DataFrame([metrics])
-            metrics_file = results_dir / f"{method_name}_dcase_metrics.csv"
-            metrics_df.to_csv(metrics_file, index=False)
-            
-            logger.info(f"Saved DCASE metrics to {metrics_file}")
+            per_run_file = run_dir / f"{method_name}_dcase_metrics.csv"
+            metrics_df.to_csv(per_run_file, index=False)
+
+            # 2) Per-method aggregate (append)
+            agg_row = {"run_tag": run_tag, **metrics}
+            fold_agg_file = method_dir / "fold_metrics.csv"
+            pd.DataFrame([agg_row]).to_csv(fold_agg_file, mode="a", header=not fold_agg_file.exists(), index=False)
+
+            # 3) Compute and write average file
+            try:
+                df = pd.read_csv(fold_agg_file)
+                # average numeric columns only
+                avg = df.drop(columns=[c for c in df.columns if df[c].dtype == object]).mean(numeric_only=True)
+                avg_df = pd.DataFrame([avg])
+                avg_df.to_csv(method_dir / "fold_average.csv", index=False)
+            except Exception as e:
+                logger.warning(f"Could not compute fold average for {method_name}: {e}")
+
+            logger.info(f"Saved DCASE metrics to {per_run_file} and updated {fold_agg_file}")
             
         except Exception as e:
             logger.error(f"Error saving DCASE metrics: {e}")
@@ -621,14 +651,15 @@ class XaresTask:
                     y_pred_logits = np.array(all_logits)
                     
                     # Save continuous scores
-                    self.save_continuous_scores(y_true, y_pred_logits, all_filenames, "knn")
+                    run_tag = _infer_run_tag_from_urls(eval_url)
+                    self.save_continuous_scores(y_true, y_pred_logits, all_filenames, "knn", run_tag)
                     
                     # Calculate and save DCASE metrics
                     dcase_metrics = self.evaluate_dcase_metrics(y_true, y_pred_logits, "knn")
                     
                     # Save DCASE metrics to CSV
                     if dcase_metrics:
-                        self._save_dcase_metrics_csv(dcase_metrics, "knn")
+                        self._save_dcase_metrics_csv(dcase_metrics, "knn", run_tag)
                         
             except Exception as e:
                 logger.error(f"Error collecting KNN scores for DCASE: {e}")
@@ -686,7 +717,7 @@ class XaresTask:
             logger.error(f"Error calculating DCASE metrics: {e}")
             return {}
 
-    def save_continuous_scores(self, y_true: np.ndarray, y_pred_logits: np.ndarray, filenames: List[str], method_name: str = "mlp"):
+    def save_continuous_scores(self, y_true: np.ndarray, y_pred_logits: np.ndarray, filenames: List[str], method_name: str = "mlp", run_tag: str = "unknown"):
         """
         Save continuous scores and ground truth to CSV files.
         
@@ -698,8 +729,8 @@ class XaresTask:
         """
         try:
             # Create results directory
-            results_dir = self.ckpt_dir / "dcase_results"
-            results_dir.mkdir(exist_ok=True)
+            results_dir = self.ckpt_dir / "dcase_results" / method_name / run_tag
+            results_dir.mkdir(parents=True, exist_ok=True)
             
             # Convert logits to probabilities
             y_pred_probs = 1 / (1 + np.exp(-y_pred_logits))
