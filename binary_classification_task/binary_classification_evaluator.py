@@ -135,6 +135,14 @@ def calculate_metrics(y_true, y_pred, y_decision=None, max_fpr=0.1):
         metrics_dict['false_positive_rate'] = fp / (fp + tn) if (fp + tn) > 0 else 0
         metrics_dict['true_negative_rate'] = tn / (tn + fp) if (tn + fp) > 0 else 0
         metrics_dict['false_negative_rate'] = fn / (fn + tp) if (fn + tp) > 0 else 0
+
+        # Counts summary
+        metrics_dict['num_positive'] = int(np.sum(y_true == 1))
+        metrics_dict['num_negative'] = int(np.sum(y_true == 0))
+        metrics_dict['true_positive'] = int(tp)
+        metrics_dict['false_positive'] = int(fp)
+        metrics_dict['true_negative'] = int(tn)
+        metrics_dict['false_negative'] = int(fn)
     
     # Official score calculation (like DCASE) - harmonic mean of AUC and pAUC
     all_perf = np.array([metrics_dict['auc'], metrics_dict['pauc']], dtype=float)
