@@ -1,0 +1,11 @@
+{
+  "auc": 1.0,
+  "pauc": 1.0,
+  "pr_auc": 1.0,
+  "official_score": 1.0,
+  "auc_jackknife": 1.0,
+  "auc_ci95": 0.0,
+  "pauc_jackknife": 1.0,
+  "pauc_ci95": 0.0,
+  "official_score_ci95": 0.0
+}

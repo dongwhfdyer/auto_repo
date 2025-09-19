@@ -11,10 +11,63 @@ from sklearn import metrics
 import scipy.stats
 import json
 
-def load_csv_data(file_path, score_col=1, filename_col=0):
-    """Load CSV with filename,score format"""
-    df = pd.read_csv(file_path, header=None)
-    return df[score_col].values
+def _read_two_col_csv(file_path: str, filename_col: int = 0, value_col: int = 1) -> pd.DataFrame:
+    """Read a filename,value CSV robustly (header or no header) and normalize columns.
+
+    Returns a dataframe with columns: filename, value
+    """
+    try:
+        df = pd.read_csv(file_path)
+        # If headerless fallback
+        if df.shape[1] < 2:
+            df = pd.read_csv(file_path, header=None)
+    except Exception:
+        df = pd.read_csv(file_path, header=None)
+
+    # If header names unknown, use positional
+    if 'filename' in df.columns and 'score' in df.columns:
+        out = df[['filename', 'score']].copy()
+        out.columns = ['filename', 'value']
+    elif 'filename' in df.columns and 'label' in df.columns:
+        out = df[['filename', 'label']].copy()
+        out.columns = ['filename', 'value']
+    elif 'filename' in df.columns and 'decision' in df.columns:
+        out = df[['filename', 'decision']].copy()
+        out.columns = ['filename', 'value']
+    else:
+        # Positional
+        out = df.iloc[:, [filename_col, value_col]].copy()
+        out.columns = ['filename', 'value']
+
+    # Coerce value to numeric when possible
+    out['value'] = pd.to_numeric(out['value'], errors='coerce')
+    # Drop NaNs (e.g., header string interpreted as row)
+    out = out.dropna(subset=['value'])
+    # Ensure filename is string
+    out['filename'] = out['filename'].astype(str)
+    return out
+
+
+def load_csv_pair(gt_file: str, pred_file: str, decision_file: str | None = None):
+    """Load CSVs (filename,value) and align by filename (inner join).
+
+    Returns y_true, y_pred, y_decision (y_decision can be None)
+    """
+    gt_df = _read_two_col_csv(gt_file)
+    pred_df = _read_two_col_csv(pred_file)
+
+    merged = gt_df.merge(pred_df, on='filename', how='inner', suffixes=('_gt', '_pred'))
+    y_true = merged['value_gt'].astype(int).to_numpy()
+    y_pred = merged['value_pred'].astype(float).to_numpy()
+
+    y_decision = None
+    if decision_file:
+        dec_df = _read_two_col_csv(decision_file)
+        merged_dec = merged[['filename']].merge(dec_df, on='filename', how='left')
+        if 'value' in merged_dec.columns:
+            y_decision = merged_dec['value'].fillna(0).astype(int).to_numpy()
+
+    return y_true, y_pred, y_decision
 
 def load_arrays(y_true_str, y_pred_str, y_decision_str=None):
     """Load arrays from comma-separated strings"""
@@ -126,9 +179,7 @@ def main():
     
     # Load data
     if args.input_type == 'csv':
-        y_true = load_csv_data(args.gt_file)
-        y_pred = load_csv_data(args.pred_file)
-        y_decision = load_csv_data(args.decision_file) if args.decision_file else None
+        y_true, y_pred, y_decision = load_csv_pair(args.gt_file, args.pred_file, args.decision_file)
     else:
         y_true, y_pred, y_decision = load_arrays(args.y_true, args.y_pred, args.y_decision)
     

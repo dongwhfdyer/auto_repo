@@ -1,0 +1,20 @@
+{
+  "auc": 0.8333333333333334,
+  "pauc": 0.7368421052631579,
+  "pr_auc": 0.8166666666666667,
+  "precision": 0.5,
+  "recall": 0.5,
+  "f1": 0.5,
+  "accuracy": 0.6,
+  "specificity": 0.6666666666666666,
+  "true_positive_rate": 0.5,
+  "false_positive_rate": 0.3333333333333333,
+  "true_negative_rate": 0.6666666666666666,
+  "false_negative_rate": 0.5,
+  "official_score": 0.782122905027933,
+  "auc_jackknife": 0.8333333333333337,
+  "auc_ci95": 0.03821120007108491,
+  "pauc_jackknife": 0.7368421052631582,
+  "pauc_ci95": 0.04183373719230055,
+  "official_score_ci95": 0.04002246863169273
+}
