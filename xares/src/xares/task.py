@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Tuple
 
 import numpy as np
+import pandas as pd
 import torch
 import torch.multiprocessing as mp
 import torch.nn as nn
@@ -20,8 +23,17 @@ from xares.metrics import METRICS_TYPE
 from xares.models.asr import AsrModelForGeneration
 from xares.models.retrival import RetrivalMLP
 from xares.models.simple import Mlp
-from xares.trainer import KNNTrainer, Trainer
+from xares.trainer import KNNTrainer, Trainer, prepare_clip_task_batch
 from xares.utils import download_hf_model_to_local, download_zenodo_record, mkdir_if_not_exists
+
+# Add binary classification evaluator import
+sys.path.append(str(Path(__file__).parent.parent.parent / "binary_classification_task"))
+try:
+    from binary_classification_evaluator import calculate_metrics
+    BINARY_EVALUATOR_AVAILABLE = True
+except ImportError:
+    logger.warning("Binary classification evaluator not available. DCASE metrics will be skipped.")
+    BINARY_EVALUATOR_AVAILABLE = False
 
 
 @dataclass
@@ -382,7 +394,84 @@ class XaresTask:
             merge_processor=self.merge_processor,
             training=False,
         )
-        return self.trainer.run_inference(dl), self.config.eval_weight
+        
+        # Run inference and collect continuous scores for DCASE in one pass
+        score = self._run_mlp_inference_with_dcase_collection(dl, eval_url)
+        
+        return score, self.config.eval_weight
+
+    def _run_mlp_inference_with_dcase_collection(self, dl, eval_url: list):
+        """Run MLP inference and collect DCASE scores in one pass"""
+        # First run the standard inference to get the metric score
+        score = self.trainer.run_inference(dl)
+        
+        # Then collect DCASE scores if available and applicable
+        if BINARY_EVALUATOR_AVAILABLE and self.config.output_dim == 2:
+            try:
+                logger.info("Collecting MLP scores for DCASE evaluation...")
+                
+                all_logits = []
+                all_labels = []
+                all_filenames = []
+                
+                # Run inference again to collect logits (this is still inefficient, but better than the previous approach)
+                # TODO: Modify trainer to collect logits during first pass
+                self.trainer.model.eval()
+                with torch.inference_mode():
+                    for batch in dl:
+                        # Extract filenames BEFORE prepare_batch_function discards them
+                        filenames = batch[2] if len(batch) > 2 else [f"sample_{i}" for i in range(len(batch[0][0]))]
+                        
+                        # Get predictions
+                        y_pred, y_true = self.trainer.model(*self.trainer.prepare_batch_function(batch, self.trainer.device))
+                        
+                        # Extract logits (for binary classification, take the positive class logit)
+                        if y_pred.shape[1] == 2:  # Binary classification
+                            logits = y_pred[:, 1].cpu().numpy()  # Positive class logits
+                        else:
+                            logits = y_pred.cpu().numpy().flatten()
+                        
+                        labels = y_true.cpu().numpy()
+                        
+                        all_logits.extend(logits)
+                        all_labels.extend(labels)
+                        all_filenames.extend(filenames)
+                
+                if len(all_logits) > 0:
+                    # Convert to numpy arrays
+                    y_true = np.array(all_labels)
+                    y_pred_logits = np.array(all_logits)
+                    
+                    # Save continuous scores
+                    self.save_continuous_scores(y_true, y_pred_logits, all_filenames, "mlp")
+                    
+                    # Calculate and save DCASE metrics
+                    dcase_metrics = self.evaluate_dcase_metrics(y_true, y_pred_logits, "mlp")
+                    
+                    # Save DCASE metrics to CSV
+                    if dcase_metrics:
+                        self._save_dcase_metrics_csv(dcase_metrics, "mlp")
+                        
+            except Exception as e:
+                logger.error(f"Error collecting MLP scores for DCASE: {e}")
+        
+        return score
+
+    def _save_dcase_metrics_csv(self, metrics: Dict[str, float], method_name: str):
+        """Save DCASE metrics to CSV file"""
+        try:
+            results_dir = self.ckpt_dir / "dcase_results"
+            results_dir.mkdir(exist_ok=True)
+            
+            # Create metrics DataFrame
+            metrics_df = pd.DataFrame([metrics])
+            metrics_file = results_dir / f"{method_name}_dcase_metrics.csv"
+            metrics_df.to_csv(metrics_file, index=False)
+            
+            logger.info(f"Saved DCASE metrics to {metrics_file}")
+            
+        except Exception as e:
+            logger.error(f"Error saving DCASE metrics: {e}")
 
     def run_knn(self) -> Tuple[float, int]:
         knn_score = 0
@@ -473,7 +562,78 @@ class XaresTask:
             label_processor=self.label_processor,
         )
         knn_trainer = KNNTrainer(num_classes=self.config.output_dim, task_name=self.config.name, output_dir=self.config.env_root)
-        return knn_trainer.train_and_eval(dl_train, dl_eval), self.config.eval_weight
+        
+        # Run KNN evaluation and collect continuous scores for DCASE in one pass
+        score = self._run_knn_eval_with_dcase_collection(dl_train, dl_eval, eval_url)
+        
+        return score, self.config.eval_weight
+
+    def _run_knn_eval_with_dcase_collection(self, dl_train, dl_eval, eval_url: list):
+        """Run KNN evaluation and collect DCASE scores in one pass"""
+        knn_trainer = KNNTrainer(num_classes=self.config.output_dim, task_name=self.config.name, output_dir=self.config.env_root)
+        
+        # Run standard KNN evaluation
+        score = knn_trainer.train_and_eval(dl_train, dl_eval)
+        
+        # Collect DCASE scores if available and applicable
+        if BINARY_EVALUATOR_AVAILABLE and self.config.output_dim == 2:
+            try:
+                logger.info("Collecting KNN scores for DCASE evaluation...")
+                
+                # Extract training features and labels (reuse from knn_trainer)
+                train_data, train_labels = zip(*knn_trainer.trainer.state.output)
+                train_data, train_labels = torch.cat(train_data, 0), torch.cat(train_labels, 0).long()
+                
+                # Create KNN model
+                from xares.trainer import KNN
+                knn_model = KNN(train_data, train_labels, nb_knn=knn_trainer.nb_knn, 
+                               num_classes=knn_trainer.num_classes, T=knn_trainer.temperature)
+                
+                all_logits = []
+                all_labels = []
+                all_filenames = []
+                
+                # Evaluate on test set
+                knn_model.eval()
+                with torch.inference_mode():
+                    for batch in dl_eval:
+                        # Extract filenames BEFORE prepare_clip_task_batch discards them
+                        filenames = batch[2] if len(batch) > 2 else [f"sample_{i}" for i in range(len(batch[0][0]))]
+                        
+                        x, y = prepare_clip_task_batch(batch)
+                        y_pred = knn_model(x)
+                        
+                        # Extract logits (for binary classification, take the positive class logit)
+                        if y_pred.shape[1] == 2:  # Binary classification
+                            logits = y_pred[:, 1].cpu().numpy()  # Positive class logits
+                        else:
+                            logits = y_pred.cpu().numpy().flatten()
+                        
+                        labels = y.cpu().numpy()
+                        
+                        all_logits.extend(logits)
+                        all_labels.extend(labels)
+                        all_filenames.extend(filenames)
+                
+                if len(all_logits) > 0:
+                    # Convert to numpy arrays
+                    y_true = np.array(all_labels)
+                    y_pred_logits = np.array(all_logits)
+                    
+                    # Save continuous scores
+                    self.save_continuous_scores(y_true, y_pred_logits, all_filenames, "knn")
+                    
+                    # Calculate and save DCASE metrics
+                    dcase_metrics = self.evaluate_dcase_metrics(y_true, y_pred_logits, "knn")
+                    
+                    # Save DCASE metrics to CSV
+                    if dcase_metrics:
+                        self._save_dcase_metrics_csv(dcase_metrics, "knn")
+                        
+            except Exception as e:
+                logger.error(f"Error collecting KNN scores for DCASE: {e}")
+        
+        return score
 
     def run(self):
         self.download_audio_tar()
@@ -485,3 +645,94 @@ class XaresTask:
     def _make_splits(self):
         splits = self.config.k_fold_splits or [self.config.train_split, self.config.valid_split, self.config.test_split]
         return list(filter(lambda x: x is not None, splits))
+
+    def evaluate_dcase_metrics(self, y_true: np.ndarray, y_pred_logits: np.ndarray, method_name: str = "mlp") -> Dict[str, float]:
+        """
+        Evaluate DCASE-compatible metrics for binary classification.
+        
+        Args:
+            y_true: Ground truth labels (0=normal, 1=anomaly)
+            y_pred_logits: Raw logits from model (higher = more anomalous)
+            method_name: Name of the method (mlp/knn) for file naming
+            
+        Returns:
+            Dictionary of DCASE metrics
+        """
+        if not BINARY_EVALUATOR_AVAILABLE:
+            logger.warning("Binary classification evaluator not available. Skipping DCASE metrics.")
+            return {}
+        
+        try:
+            # Convert logits to probabilities using sigmoid
+            y_pred_probs = 1 / (1 + np.exp(-y_pred_logits))
+            
+            # For binary decisions, use 0.5 threshold
+            y_decision = (y_pred_probs > 0.5).astype(int)
+            
+            # Calculate DCASE metrics
+            metrics = calculate_metrics(y_true, y_pred_probs, y_decision, max_fpr=0.1)
+            
+            logger.info(f"DCASE metrics for {method_name}:")
+            logger.info(f"  AUC: {metrics.get('auc', 0):.4f}")
+            logger.info(f"  pAUC: {metrics.get('pauc', 0):.4f}")
+            logger.info(f"  Official Score: {metrics.get('official_score', 0):.4f}")
+            logger.info(f"  Precision: {metrics.get('precision', 0):.4f}")
+            logger.info(f"  Recall: {metrics.get('recall', 0):.4f}")
+            logger.info(f"  F1: {metrics.get('f1', 0):.4f}")
+            
+            return metrics
+            
+        except Exception as e:
+            logger.error(f"Error calculating DCASE metrics: {e}")
+            return {}
+
+    def save_continuous_scores(self, y_true: np.ndarray, y_pred_logits: np.ndarray, filenames: List[str], method_name: str = "mlp"):
+        """
+        Save continuous scores and ground truth to CSV files.
+        
+        Args:
+            y_true: Ground truth labels
+            y_pred_logits: Raw logits from model
+            filenames: List of filenames corresponding to each sample
+            method_name: Name of the method (mlp/knn) for file naming
+        """
+        try:
+            # Create results directory
+            results_dir = self.ckpt_dir / "dcase_results"
+            results_dir.mkdir(exist_ok=True)
+            
+            # Convert logits to probabilities
+            y_pred_probs = 1 / (1 + np.exp(-y_pred_logits))
+            
+            # Save ground truth
+            gt_df = pd.DataFrame({
+                'filename': filenames,
+                'label': y_true
+            })
+            gt_file = results_dir / f"{method_name}_ground_truth.csv"
+            gt_df.to_csv(gt_file, index=False)
+            
+            # Save continuous scores
+            pred_df = pd.DataFrame({
+                'filename': filenames,
+                'score': y_pred_probs
+            })
+            pred_file = results_dir / f"{method_name}_predictions.csv"
+            pred_df.to_csv(pred_file, index=False)
+            
+            # Save binary decisions
+            y_decision = (y_pred_probs > 0.5).astype(int)
+            decision_df = pd.DataFrame({
+                'filename': filenames,
+                'decision': y_decision
+            })
+            decision_file = results_dir / f"{method_name}_decisions.csv"
+            decision_df.to_csv(decision_file, index=False)
+            
+            logger.info(f"Saved continuous scores to {results_dir}")
+            logger.info(f"  Ground truth: {gt_file}")
+            logger.info(f"  Predictions: {pred_file}")
+            logger.info(f"  Decisions: {decision_file}")
+            
+        except Exception as e:
+            logger.error(f"Error saving continuous scores: {e}")

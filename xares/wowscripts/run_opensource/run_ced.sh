@@ -29,6 +29,11 @@ tasks=(
     "changshu_motor2023"
 )
 
+all_tasks=()
+for task in "${tasks[@]}"; do
+    all_tasks+=("src/tasks/${task}.py")
+done
+
 models=("tiny" "mini" "small" "base")
 COMMENT=""
 #---------kkuhn-block------------------------------
@@ -43,7 +48,7 @@ for model in "${models[@]}"; do
     esac
 
     LOG_FILE="/data1/repos/EAT_projs/logfiles/xares_main_run/ced_${model}.log"
-    OUTPUT_DIR="/data1/repos/EAT_projs/xares-main/outputs/ced_${model}"
+    OUTPUT_DIR="/data1/repos/EAT_projs/xares-main/outputs_5fold_industry/ced_${model}"
 
     mkdir -p "${OUTPUT_DIR}"
 
@@ -52,7 +57,7 @@ for model in "${models[@]}"; do
 
     for task in "${tasks[@]}"; do
         echo "Running task: ${task} (model: ${model})" | tee -a "${LOG_FILE}"
-        python -m xares.run --from-stage 1 --to-stage 2 --output_dir "${OUTPUT_DIR}" "${encoder}" \
-            src/tasks/${task}.py 2>&1 | tee -a "${LOG_FILE}"
+        python -m xares.run --from-stage 1 --to-stage 2 --max-jobs 8 --output_dir "${OUTPUT_DIR}" "${encoder}" \
+            "${all_tasks[@]}" 2>&1 | tee -a "${LOG_FILE}"
     done
 done
